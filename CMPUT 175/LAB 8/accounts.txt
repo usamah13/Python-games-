@@ -1,0 +1,10 @@
+Bob:234.70
+Johnson:791.56
+Anna:3260.55
+Jill:-23.76
+Smith:Not_A_Float!
+James:1022.71
+Sarah:-567.30
+George:eleven
+Vanessa:43781.43
+Zoya:417.99

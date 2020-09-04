@@ -1,0 +1,432 @@
+
+# Tic Tac Toe Version 3
+# 
+# 3x3 grid of rectangles are displayed. There are two
+# players, one X, one O. X goes first and players take
+# turns clicking on tiles. The player's letter appears on
+# an empty tile when clicked. If three of the same letters
+# appear in a row, the corresponding player wins.
+#
+# Version 2 implements all features. New to version 3
+# is custom cursor displays.
+import time, pygame, random
+from uagame import Window
+from pygame.locals import *
+
+# User-defined functions
+def main():
+    # Creates the game window and game, and runs game
+
+    window = Window('Tic Tac Toe', 500, 400)
+    window.set_auto_update(False)
+    game = Game(window)
+    game.play()
+    window.close()
+
+# User-defined classes
+
+class Game:
+    # Defines a game of Tic Tac Toe
+
+    def __init__(self, window):
+        # Initialize a Game.
+        # - self is the Game to initialize
+        # - window is the uagame window object
+        
+        # create all of the game attributes
+        self.window = window
+        Tile.set_window(self.window)
+        self.pause_time = 0.02 # smaller is faster game
+        self.close_clicked = False
+        self.continue_game = True        
+        self.player1_shape = 'X'
+        self.player2_shape = 'O'
+        self.current_player = self.player1_shape
+        self.grid = [ ]
+        self.create_grid()
+        self.flashers = [ ]
+        
+        self.player1_cursor = Cursor('cursorx.txt')
+        self.player2_cursor = Cursor('cursoro.txt')
+        self.player1_cursor.activate()
+        
+        
+    def create_grid(self):
+        # creates our 3x3 grid of tiles by creating three
+        # separate rows, each one containing 3 tiles
+        #   - self: the TTT game to create a grid for
+        for i in range(3):
+            self.create_row()
+        
+    def create_row(self):
+        # creates a single row in our grid of tiles. Each
+        # row contains 3 tiles.
+        #   - self: the TTT game to create a tile row for
+        one_row = [ ]
+
+        # calculate the dimensions that tiles need to be
+        tile_width  = self.window.get_width() / 3
+        tile_height = self.window.get_height() / 3
+
+        # calculate the y-coordinates of tiles in this row.
+        # To do so, we need to know what row number we are
+        # creating tiles for. We can do that by taking the
+        # current len of the grid, e.g., len 0 = first row
+        row_index = len(self.grid)
+        tile_y = tile_height * row_index
+
+        # create each tile in the row. Tile x-coordinates are offset
+        # by tile’s index (times tile width) in the row.
+        for i in range(3):
+            tile_x = tile_width * i
+            one_row.append(Tile(tile_x, tile_y, tile_width, tile_height))
+
+        # add the newly created row to our grid of tiles
+        self.grid.append(one_row)
+    
+    def play(self):
+        # Play the game until the player presses the close box.
+        # - self is the Game that should be continued or not.
+
+        while not self.close_clicked:  # until player clicks close box
+            # play frame
+            self.handle_event()
+            self.draw()            
+            if self.continue_game:
+                self.update()
+                self.decide_continue()
+            time.sleep(self.pause_time) # set game velocity by pausing
+                       
+    def handle_event(self):
+        # Handle each user event by changing the game state
+        # appropriately.
+        # - self is the Game whose events will be handled.
+
+        event = pygame.event.poll()
+        # close the game if someone has clicked on the close button
+        if event.type == QUIT:
+            self.close_clicked = True
+
+        # obtain position of mouse: event.pos
+        # go over each tile and see if it overlaps with the position
+        # if tile overlaps with event.pos, update tile content  
+        if event.type == MOUSEBUTTONUP and self.continue_game == True:
+            self.handle_user_input(event.pos)
+
+    def alternate_turn(self):
+        # alternates between player1 and player2's turn
+        #   - self: the game to alternate turns for
+        if self.current_player == self.player1_shape:
+            self.current_player = self.player2_shape
+            self.player2_cursor.activate()
+        else:
+            self.current_player = self.player1_shape
+            self.player1_cursor.activate()
+
+    def handle_user_input(self, pos):
+        # Uses the position of a mouse click to inform tiles
+        # where on screen has just been clicked. If valid input
+        # was received, alternate the current player.
+        #   - self: the TTT game
+        #   - pos: where on screen (x,y) the mouse was clicked
+        valid_input = False
+        for row in self.grid:
+            for tile in row:
+                if tile.select(pos, self.current_player):
+                    valid_input = True
+        
+        # alternate the current player's turn if input was valid
+        if valid_input:
+            self.alternate_turn()
+
+    def select_flashers(self):
+        # chooses one random tile that contributes to the
+        # game end conditions, and toggles its flashing on
+        #   - self : the game to flash tiles for
+        
+        # we only flash tiles if the game is in fact over
+        if self.continue_game == False:
+            flashing_tile = random.choice(self.flashers)
+            flashing_tile.flash()
+
+    def draw(self):
+        # Draw all game objects.
+        # - self is the Game to draw        
+        self.window.clear()
+        self.select_flashers()
+        
+        # draw each of our tiles
+        for row in self.grid:
+            for tile in row:
+                tile.draw()
+
+        self.window.update()
+                
+    def update(self):
+        # Update the game objects.
+        # - self is the Game to update
+        pass
+             
+    def is_line_complete(self, line):
+        # checks to see if the contents of all tiles in a provided
+        # line are the same, and not empty. Returns True if
+        # they are the same, and False otherwise.
+        #   - self: the game the tiles belong to
+        #   - line: a list of tiles to compare
+        
+        # return line[0] == line[1] and line[1] == line[2]
+        # below is the generalized solution to the above statement,
+        # for a TTT board of any sized grid
+        for i in range(len(line)-1):
+            if not (line[i] == line[i+1]):
+                return False
+        return True
+
+    def find_horizontal_line(self):
+        # Goes through all horizontal lines in our grid.
+        # Returns the tiles involved in the first complete line (as a list)
+        # or returns an empty list if no complete lines are found.
+        #   - self: the game that a complete line is being checked in
+        for row in self.grid:
+            if self.is_line_complete(row):
+                return row            
+        return []           
+             
+    def find_vertical_line(self):
+        # goes through all vertical lines in our grid.
+        # Returns the tiles involved in the first complete vertical line (as a list)
+        # or returns an empty list if no complete lines are found.
+        #   - self: the game to check vertical lines in
+        
+        # go over each column index in our grid and check
+        # for a complete line using tiles that share that column index
+        for i in range(len(self.grid[0])):
+            column_list = [ ]
+            for row in self.grid:
+                column_list.append(row[i])
+            if self.is_line_complete(column_list):
+                return column_list
+            
+        return [ ]        
+            
+    def find_diagonal_line(self):
+        # goes through all diagonal lines in our grid.
+        # Returns the tiles involved in the first complete diagonal line (as a list)
+        # or returns an empty list if no complete lines are found.
+        #   - self: the game to check diagonal lines in
+        
+        # our first diagonal includes all tiles where their row and col
+        # indices are the same, e.g., 0,0 and 1,1 and 2,2 etc...
+        first_diag = [ ]
+        for i in range(len(self.grid)):
+            tile = self.grid[i][i]
+            first_diag.append(tile)
+        if self.is_line_complete(first_diag):
+            return first_diag     
+
+        # our second diagonal includes all the tiles where
+        # their row and column indices sum to n - 1
+        second_diag = [ ]
+        row_index = len(self.grid) - 1
+        col_index  = 0
+        while row_index >= 0:
+            tile = self.grid[row_index][col_index]
+            second_diag.append(tile)
+            row_index -= 1
+            col_index += 1
+        if self.is_line_complete(second_diag):
+            return second_diag             
+            
+        return [ ]        
+          
+    def find_line(self):
+        # checks for a completed line (i.e., all tiles have the same value).
+        # If a completed line is found, return it. If no completed line is found,
+        # return an empty list
+        line = self.find_horizontal_line()
+        if len(line) > 0:
+            return line
+        
+        line = self.find_vertical_line()
+        if len(line) > 0:
+            return line
+        
+        line = self.find_diagonal_line()
+        if len(line) > 0:
+            return line
+        
+        return [ ]
+         
+    def is_win(self):
+        # checks to see if one player has won. Returns
+        # true if one player has won, false otherwise
+        #   - self: the game to check for a win
+        
+        # the game is over if we find a complete line
+        line = self.find_line()      
+        if len(line) > 0:
+            self.flashers = line
+            return True
+        return False
+            
+    def is_tie(self):
+        # checks to see if the game has ended in a tie.
+        # Returns true if the game is a tie
+        #   - self: the game to check for a tie
+        
+        # the game is also over when no lines are found,
+        # but all of the tiles are filled
+        empty_tile_found = False
+        for row in self.grid:            
+            for tile in row:                
+                if not tile.is_filled():
+                    empty_tile_found = True
+        
+        # if we haven't found an empty tile, the game
+        # must be a draw - there is no place left to play
+        if empty_tile_found:
+            return False
+
+        # save all of the tiles contributing to a tie so they
+        # can be used for flashing the screen at the end of the game
+        self.flashers = [ ]
+        for row in self.grid:
+            self.flashers.extend(row)        
+        return True
+                         
+    def decide_continue(self):
+        # Check and remember if the game should continue
+        # - self is the Game to check
+        
+        if self.is_win() or self.is_tie():
+            self.continue_game = False
+            
+
+class Tile:
+    # represents a single on a Tic Tac Toe board    
+    content_size = 100
+    border_width = 3
+    fg_color = 'white'
+    bg_color = 'black'
+    window = None
+    
+    @classmethod    
+    def set_window(cls, window):
+        cls.window = window
+        
+    def __init__(self, x, y, width, height):
+        # Create an object representing a tile on a TTT board.
+        # x, y, width, and height specify a rectangle that
+        # defines the perimiter of the tile.
+
+        # create our instance attributes
+        self.x = x
+        self.y = y
+        self.rect = pygame.Rect(x, y, width, height)
+        self.content = ''
+        self.flashing = False
+
+    def draw_flashing_tile(self):
+        # if we are flashing, draw a white rectangle and turn flashing off 
+        #   - self: the flashing to draw
+        rect_color = pygame.Color(self.fg_color)
+        pygame.draw.rect(self.window.get_surface(), rect_color, self.rect)    
+        self.flashing = False
+        
+    def draw_nonflashing_tile(self):
+        # draw our tile when it is in a non-flashing state: display border and
+        # the letter (if any) contained in the tile
+        #   - self: the tile to draw content for
+
+        # draw our rectangle with borders
+        rect_color = pygame.Color(self.fg_color)
+        pygame.draw.rect(self.window.get_surface(), rect_color, self.rect, self.border_width)
+    
+        # draw our content (if any)
+        if self.content != '':
+            self.window.set_font_size(self.content_size)
+            self.window.set_font_color(self.fg_color)        
+            x = self.rect.left + self.rect.width / 2 - self.window.get_string_width(self.content)/2
+            y = self.rect.top + self.rect.height / 2 - self.window.get_font_height() / 2
+            self.window.draw_string(self.content, x, y)        
+        
+    def draw(self):
+        # draws our tile contents and borders to the screen
+        #   - self: the tile to draw
+        
+        # if we are flashing, draw a white rectangle and turn flashing off        
+        if self.flashing == True:
+            self.draw_flashing_tile()
+        
+        # otherwise, draw our contents as normal
+        else:
+            self.draw_nonflashing_tile()
+    
+    def select(self, pos, current_player):
+        # checks if the mouse is within the boundary of our tile.
+        # if so, updates the contents of the tile based on the. Returns
+        # current player. True if the input was valid, and False otherwise.
+        #   - self: the tile to update
+        #   - pos: the position of the mouse when it was clicked
+        #   - current_player: the player to set an X or O for. Should 
+        #                              be a string corresponding to current player's symbol
+        
+        # if the player has clicked outside of our boundaries,
+        # ignore the click and do nothing
+        if not self.rect.collidepoint(pos):
+            # do nothing
+            return False
+        # tile is currently empty
+        elif self.content == '':
+            self.content = current_player
+            return True
+        # otherwise, tile is already occupied
+        else:
+            # we need to flash the screen in a later version
+            self.flashing = True
+            return False
+            
+    def is_filled(self):
+        # returns True or False depending on whether or not
+        # the tile has something in it
+        #   - self: the tile to check the content of
+        return self.content != ''
+    
+    def __eq__(self, other):
+        # check to see if the content of one tile matches another
+        # and that both tiles are not empty.
+        #   - self: the first tile
+        #   - other: the comparison tile
+        return self.content == other.content and self.content != ''
+    
+    def flash(self):
+        # makes a tile flash once
+        #   - self: the tile to flash
+        self.flashing = True
+
+class Cursor:
+    # represents a custom cursor for our program
+    
+    def __init__(self, filename):
+        # compile a cursor image based on an ASCII image from a .txt file
+        #   - self: the cursor object we are making
+        #   - filename: the file to read the cursor ASCII image from
+        
+        # fill in these details
+        fl = open(filename, 'r')
+        lines = fl.readlines()
+        lines = [ line.strip() for line in lines ]
+        
+        width = len(lines[0])
+        height = len(lines)
+        self.size = ( width, height )
+        self.hotspot = (width//2, height//2)
+        self.xormasks, self.andmasks = pygame.cursors.compile(lines, white='*')
+        
+    def activate(self):
+        # sets the program's cursor to us
+        #   - self: the cursor we are changing to
+        
+        pygame.mouse.set_cursor(self.size, self.hotspot, self.xormasks, self.andmasks)
+    
+main()
