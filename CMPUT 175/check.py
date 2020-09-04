@@ -361,10 +361,10 @@ def testEmpties():
 
 # Uncomment the tests for the function you want to check
 
-testCollapseRow()
-testCollapseLeft()
-testCollapseRight()
-testCollapsible()
+#testCollapseRow()
+#testCollapseLeft()
+#testCollapseRight()
+#testCollapsible()
 testEmpties()
-testCollapseDown()
-testCollapseUp()
+#testCollapseDown()
+#testCollapseUp()

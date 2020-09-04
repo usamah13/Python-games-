@@ -20,15 +20,14 @@ class Grid():
 
     def createGrid(self, row, col):
 
-        grid = []
-    
-        for x in range(row):
-            row = []
-            for y in range(col):
-                row.append(0)
-            grid.append(row)
-        print(grid)
-        return grid        
+        """
+        Create the grid here using the arguments row and col
+        as the number of rows and columns of the grid to be made.
+
+        The function should return the grid to be used in __init__()
+        """
+
+        pass
 
 
     def assignRandCell(self, init=False):
@@ -81,16 +80,7 @@ class Grid():
         This function should update the list of empty tiles of the grid.
         """
 
-        
-        row = 0
-        for x in self.grid:
-            coordinate = []
-            for y in range(len(x)):
-                if x[y] == 0:
-                    coordinate.append(x)
-                    coordinate.append(y)
-            self.emptiesSet.append(coordinate)
-            row = row + 1
+        pass
 
 
     def collapsible(self):
